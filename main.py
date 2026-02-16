@@ -3,8 +3,8 @@ import os
 from PySide6.QtWidgets import QApplication
 from darkdetect import isDark
 import win32mica
-from UI.settings_manager import SettingsManager
-from UI.main_window import MainWindow
+from src.UI.settings_manager import SettingsManager
+from src.UI.main_window import MainWindow
 
 if __name__ == "__main__":
     # 创建Qt应用程序

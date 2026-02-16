@@ -1,10 +1,9 @@
 import os
-import sys
 from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QTableWidget, QTableWidgetItem, QHeaderView
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
-from UI.settings_manager import SettingsManager
-from UI.settings_window import SettingsWindow
+from src.UI.settings_manager import SettingsManager
+from src.UI.settings_window import SettingsWindow
 from src.func.qtool import tool_quick
 from src.func.fma import tool_fma
 from src.util import Level

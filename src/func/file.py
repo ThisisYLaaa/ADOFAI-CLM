@@ -3,6 +3,8 @@ import os
 from src.util.Logger import get_logger
 logger = get_logger("文件工具")
 from src.func.interact import tool_interact
+from src.UI.settings_manager import SettingsManager
+settings_manager = SettingsManager()
 
 class tool_file:
     @staticmethod
@@ -28,24 +30,23 @@ class tool_file:
         :return: adofai文件路径
         """
         fs: list[str] = os.listdir(level_dir)
-        afp1: list[str] = []; afp2: list[str] = []; afp3: list[str] = []
+        priorities = settings_manager.settings.adofai_search_priorities
+        afp_list: list[list[str]] = [[] for _ in priorities]
+        
         for f in fs:
             if f.endswith(".adofai"):
-                if any([i in f for i in ["main", "vfx", "level"]]):
-                    afp1.append(os.path.join(level_dir, f))
-                elif any([i in f for i in ["backup"]]):
-                    afp3.append(os.path.join(level_dir, f))
-                else:
-                    afp2.append(os.path.join(level_dir, f))
-            
-        if len(afp1)>0: return afp1[0]
-        elif len(afp2)>0:
-            songfilename: str = tool_file.get_music_filepath_from_leveldir_auto(level_dir, console_log=False)
-            for f in afp2:
-                if songfilename in f:
-                    return f
-            return afp2[0]
-        elif len(afp3)>0: return afp3[0]
+                for i, keywords in enumerate(priorities):
+                    if not keywords:
+                        if "backup" in f: continue  # 没有指定关键词，且文件名包含backup，跳过
+                        afp_list[i].append(os.path.join(level_dir, f))
+                        break
+                    if any([keyword in f for keyword in keywords]):
+                        afp_list[i].append(os.path.join(level_dir, f))
+                        break
+        
+        for i, afp in enumerate(afp_list):
+            if len(afp) > 0:
+                return afp[0]
         if console_log: logger.error(f"未找到adofai文件: {level_dir}")
         return ""
     
@@ -75,28 +76,24 @@ class tool_file:
         :return: adofai文件路径
         """
         fs: list[str] = os.listdir(level_dir)
-        afp1: list[str] = []; afp2: list[str] = []; afp3: list[str] = []
+        priorities = settings_manager.settings.adofai_search_priorities
+        afp_list: list[list[str]] = [[] for _ in priorities]
+        
         for f in fs:
             if f.endswith(".adofai"):
-                if any([i in f for i in ["main", "vfx", "level"]]):
-                    afp1.append(os.path.join(level_dir, f))
-                elif any([i in f for i in ["backup"]]):
-                    afp3.append(os.path.join(level_dir, f))
-                else:
-                    afp2.append(os.path.join(level_dir, f))
-            
-        if len(afp1) == 1: return afp1[0]
-        elif len(afp1) > 0:
-            i: int = tool_interact.list_ask_index("请选择adofai文件", afp1)
-            return afp1[i]
-        elif len(afp2) == 1: return afp2[0]
-        elif len(afp2) > 0:
-            i = tool_interact.list_ask_index("请选择adofai文件", afp2)
-            return afp2[i]
-        elif len(afp3) == 1: return afp3[0]
-        elif len(afp3) > 0:
-            i = tool_interact.list_ask_index("请选择adofai文件", afp3)
-            return afp3[i]
+                for i, keywords in enumerate(priorities):
+                    if not keywords:
+                        afp_list[i].append(os.path.join(level_dir, f))
+                        break
+                    if any([keyword in f for keyword in keywords]):
+                        afp_list[i].append(os.path.join(level_dir, f))
+                        break
+        
+        for afp in afp_list:
+            if len(afp) == 1: return afp[0]
+            elif len(afp) > 0:
+                i: int = tool_interact.list_ask_index("请选择adofai文件", afp)
+                return afp[i]
         if console_log: logger.error(f"未找到adofai文件: {level_dir}")
         return ""
     

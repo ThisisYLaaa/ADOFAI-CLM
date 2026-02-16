@@ -8,6 +8,7 @@ class AppSettings:
     parent_dir: str = ""
     auto_reload: bool = False
     cache_filename: str = "cache.json"
+    adofai_search_priorities: list[list[str]] = field(default_factory=lambda: [["vfx"], ["level", "main"], ["backup"]])
 
 class SettingsManager:
     """设置管理器"""
@@ -39,7 +40,8 @@ class SettingsManager:
                     {
                         'parent_dir': self.settings.parent_dir,
                         'auto_reload': self.settings.auto_reload,
-                        'cache_filename': self.settings.cache_filename
+                        'cache_filename': self.settings.cache_filename,
+                        'adofai_search_priorities': self.settings.adofai_search_priorities
                     },
                     f,
                     default_flow_style=False,
@@ -50,11 +52,12 @@ class SettingsManager:
             print(f"保存设置失败: {e}")
             return False
 
-    def update_settings(self, parent_dir: str = None, auto_reload: bool = None, cache_filename: str = None):  # pyright: ignore[reportArgumentType]
+    def update_settings(self, parent_dir: str = None, auto_reload: bool = None, cache_filename: str = None, adofai_search_priorities: list[list[str]] = None):  # pyright: ignore[reportArgumentType]
         """更新设置
         :param parent_dir: 父文件夹路径
         :param auto_reload: 是否自动重载
         :param cache_filename: 缓存文件名
+        :param adofai_search_priorities: .adofai文件搜索优先级
         """
         if parent_dir is not None:
             self.settings.parent_dir = parent_dir
@@ -62,4 +65,6 @@ class SettingsManager:
             self.settings.auto_reload = auto_reload
         if cache_filename is not None:
             self.settings.cache_filename = cache_filename
+        if adofai_search_priorities is not None:
+            self.settings.adofai_search_priorities = adofai_search_priorities
         self.save_settings()
