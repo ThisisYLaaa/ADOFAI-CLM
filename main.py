@@ -1,5 +1,6 @@
 import sys
 import os
+import multiprocessing
 from PySide6.QtWidgets import QApplication
 from darkdetect import isDark
 import win32mica
@@ -7,6 +8,9 @@ from src.UI.settings_manager import SettingsManager
 from src.UI.main_window import MainWindow
 
 if __name__ == "__main__":
+    # 支持PyInstaller打包
+    multiprocessing.freeze_support()
+    
     # 创建Qt应用程序
     app = QApplication(sys.argv)
     
