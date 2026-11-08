@@ -1,4 +1,23 @@
+# Python
 __pycache__/
-.trae/
+*.pyc
+.venv/
+
+# 打包产物
+build/
+dist/
+*.spec
+
+# 本地运行时数据（程序生成，不入库）
+config.yaml
+settings.json
+levels.json
+cache.json
+歌单.png
+歌单.txt
+
+# 旧版设置文件（已由 config.yaml 取代，仅保留迁移兼容）
 settings.yaml
-Demo.py
+
+# 编辑器
+.trae/
