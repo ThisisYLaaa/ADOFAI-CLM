@@ -2,13 +2,15 @@
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-import settings
 from src.util.Logger import get_logger
 logger = get_logger("快速工具")
 from src.func import tool_file
 from src.func import tool_fma
+from src.UI.settings_manager import SettingsManager
 from src.util import Level
 from src.util import get_level_json
+
+settings_manager = SettingsManager()
 
 class tool_quick:
     @staticmethod
@@ -41,7 +43,7 @@ class tool_quick:
         
         result: dict[str, tuple[Level, str]] = {}
         unknown_result: list[tuple[Level, str]] = []
-        with ProcessPoolExecutor(max_workers=settings.max_parse_level_threading) as executor:
+        with ProcessPoolExecutor(max_workers=settings_manager.settings.max_parse_level_threading) as executor:
             future_to_path = {executor.submit(tool_quick._parse_level, path, False): path for path in adofai_filepaths}
             for future in as_completed(future_to_path):
                 path = future_to_path[future]

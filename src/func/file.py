@@ -36,13 +36,10 @@ class tool_file:
         for f in fs:
             if f.endswith(".adofai"):
                 for i, keywords in enumerate(priorities):
-                    if not keywords:
-                        if "backup" in f: continue  # 没有指定关键词，且文件名包含backup，跳过
-                        afp_list[i].append(os.path.join(level_dir, f))
-                        break
                     if any([keyword in f for keyword in keywords]):
                         afp_list[i].append(os.path.join(level_dir, f))
                         break
+                afp_list[i].append(os.path.join(level_dir, f))
         
         for i, afp in enumerate(afp_list):
             if len(afp) > 0:
@@ -82,12 +79,10 @@ class tool_file:
         for f in fs:
             if f.endswith(".adofai"):
                 for i, keywords in enumerate(priorities):
-                    if not keywords:
-                        afp_list[i].append(os.path.join(level_dir, f))
-                        break
                     if any([keyword in f for keyword in keywords]):
                         afp_list[i].append(os.path.join(level_dir, f))
                         break
+                afp_list[i].append(os.path.join(level_dir, f))
         
         for afp in afp_list:
             if len(afp) == 1: return afp[0]

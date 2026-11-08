@@ -1,12 +1,15 @@
 import os
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QTableWidget, QTableWidgetItem, QHeaderView
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QTableWidget, QTableWidgetItem, QHeaderView
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
+from src.util.Logger import get_logger
 from src.UI.settings_manager import SettingsManager
 from src.UI.settings_window import SettingsWindow
 from src.func.qtool import tool_quick
 from src.func.fma import tool_fma
 from src.util import Level
+
+logger = get_logger("主窗口")
 
 class MainWindow(QMainWindow):
     """主窗口"""
@@ -42,7 +45,18 @@ class MainWindow(QMainWindow):
         
         # 主布局
         main_layout = QVBoxLayout(central_widget)
-        
+
+        # 按钮栏
+        button_layout = QHBoxLayout()
+        self.export_button = QPushButton("生成歌单")
+        self.export_button.clicked.connect(self.export_playlist)
+        self.export_image_button = QPushButton("生成歌单图片")
+        self.export_image_button.clicked.connect(self.export_playlist_image)
+        button_layout.addWidget(self.export_button)
+        button_layout.addWidget(self.export_image_button)
+        button_layout.addStretch()
+        main_layout.addLayout(button_layout)
+
         # 创建关卡列表
         self.level_table = QTableWidget()
         self.level_table.setColumnCount(5)
@@ -80,35 +94,40 @@ class MainWindow(QMainWindow):
 
     def reload_levels(self):
         """重载关卡"""
-        parent_dir = self.settings_manager.settings.parent_dir
-        if not parent_dir:
-            print("请先设置父文件夹路径")
+        parent_dirs = self.settings_manager.settings.parent_dirs
+        if not parent_dirs:
+            logger.warning("请先设置父文件夹路径")
             return
-        
-        try:
-            levels, unknown_levels = tool_quick.get_elevel_from_parent_dir(parent_dir, console_log=True)
-            self.update_level_table(levels, unknown_levels, parent_dir)
-        except Exception as e:
-            print(f"重载关卡失败: {e}")
 
-    def update_level_table(self, levels: dict[str, tuple[Level, str]], unknown_levels: list[tuple[Level, str]], parent_dir: str):
+        all_levels: dict[str, tuple[Level, str]] = {}
+        all_unknown: list[tuple[Level, str]] = []
+        for parent_dir in parent_dirs:
+            try:
+                levels, unknown_levels = tool_quick.get_elevel_from_parent_dir(parent_dir, console_log=True)
+                all_levels.update(levels)
+                all_unknown.extend(unknown_levels)
+            except Exception as e:
+                logger.error(f"加载目录 {parent_dir} 失败: {e}")
+
+        self.update_level_table(all_levels, all_unknown, parent_dirs)
+
+    def update_level_table(self, levels: dict[str, tuple[Level, str]], unknown_levels: list[tuple[Level, str]], parent_dirs: list[str]):
         """更新关卡列表
         :param levels: 关卡字典，值为(关卡对象, 文件路径)元组
         :param unknown_levels: 未知关卡列表，元素为(关卡对象, 文件路径)元组
-        :param parent_dir: 父文件夹路径
+        :param parent_dirs: 父文件夹路径列表
         """
+        self._levels_data = levels
+        self._unknown_levels_data = unknown_levels
+        self._parent_dirs = parent_dirs
+
         # 清空表格
         self.level_table.setRowCount(0)
         
         # 添加已知关卡
         for song_name, (level, file_path) in levels.items():
-            # 获取关卡文件夹路径
             level_dir = os.path.dirname(file_path)
-            # 计算相对于父文件夹的路径
-            try:
-                relative_path = os.path.relpath(level_dir, parent_dir)
-            except Exception:
-                relative_path = level_dir
+            relative_path = self._get_relative_path(level_dir, parent_dirs)
             
             row_position = self.level_table.rowCount()
             self.level_table.insertRow(row_position)
@@ -132,13 +151,8 @@ class MainWindow(QMainWindow):
         
         # 添加未知关卡
         for level, file_path in unknown_levels:
-            # 获取关卡文件夹路径
             level_dir = os.path.dirname(file_path)
-            # 计算相对于父文件夹的路径
-            try:
-                relative_path = os.path.relpath(level_dir, parent_dir)
-            except Exception:
-                relative_path = level_dir
+            relative_path = self._get_relative_path(level_dir, parent_dirs)
             
             row_position = self.level_table.rowCount()
             self.level_table.insertRow(row_position)
@@ -158,6 +172,86 @@ class MainWindow(QMainWindow):
             # 存储完整路径，用于双击打开
             path_item.setData(Qt.ItemDataRole.UserRole, level_dir)
             self.level_table.setItem(row_position, 4, path_item)
+
+    def _get_relative_path(self, level_dir: str, parent_dirs: list[str]) -> str:
+        for parent_dir in parent_dirs:
+            try:
+                return os.path.relpath(level_dir, parent_dir)
+            except Exception:
+                continue
+        return level_dir
+
+    def _get_sorted_song_names(self) -> list[str] | None:
+        if not hasattr(self, '_levels_data') or not self._levels_data:
+            logger.warning("请先加载关卡数据")
+            return None
+
+        song_names = []
+        for song_name in self._levels_data:
+            clean_name = tool_fma.remove_unity_rich_text(song_name)
+            if clean_name:
+                song_names.append(clean_name)
+
+        song_names.sort(key=lambda s: s.upper())
+        return song_names
+
+    def export_playlist(self):
+        """生成歌单：将当前加载的关卡名称保存到txt文件"""
+        song_names = self._get_sorted_song_names()
+        if song_names is None:
+            return
+
+        file_path = os.path.join(os.getcwd(), "歌单.txt")
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write("\n".join(song_names))
+            logger.info(f"歌单已生成: {file_path} (共 {len(song_names)} 首)")
+        except Exception as e:
+            logger.error(f"生成歌单失败: {e}")
+
+    def export_playlist_image(self):
+        """生成歌单图片：将当前加载的关卡名称保存为透明底PNG图片"""
+        song_names = self._get_sorted_song_names()
+        if song_names is None:
+            return
+
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+        except ImportError:
+            logger.error("生成图片需要 Pillow 库，请安装: pip install Pillow")
+            return
+
+        try:
+            margin = 40
+            font_size = 28
+
+            font = None
+            for font_name in ["msyh.ttc", "Microsoft YaHei UI", "simhei.ttf", "arial.ttf"]:
+                try:
+                    font = ImageFont.truetype(font_name, font_size)
+                    break
+                except Exception:
+                    continue
+            if font is None:
+                font = ImageFont.load_default()
+
+            line_spacing = font_size + 8
+            img_width = 800
+            img_height = margin * 2 + len(song_names) * line_spacing
+            img = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+
+            y = margin
+            for name in song_names:
+                draw.text((margin + 2, y + 2), name, fill=(0, 0, 0, 80), font=font)
+                draw.text((margin, y), name, fill=(255, 255, 255, 255), font=font)
+                y += line_spacing
+
+            file_path = os.path.join(os.getcwd(), "歌单.png")
+            img.save(file_path, "PNG")
+            logger.info(f"歌单图片已生成: {file_path} (共 {len(song_names)} 首)")
+        except Exception as e:
+            logger.error(f"生成歌单图片失败: {e}")
 
     def on_item_double_clicked(self, item):
         """处理表格项双击事件
