@@ -1,1 +1,0 @@
-max_parse_level_threading: int = 5
