@@ -1,21 +1,39 @@
+"""主窗口：关卡表格、排序、双击打开目录与歌单导出。"""
 import os
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QTableWidget, QTableWidgetItem, QHeaderView
-from PySide6.QtGui import QAction
+
 from PySide6.QtCore import Qt
-from src.util.Logger import get_logger
-from src.UI.settings_manager import SettingsManager
-from src.UI.settings_window import SettingsWindow
-from src.func.qtool import tool_quick
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QHeaderView,
+    QMainWindow,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
 from src.func.fma import tool_fma
-from src.util import Level
+from src.func.qtool import tool_quick
+from src.UI.settings_manager import SettingsManager, get_settings_manager
+from src.UI.settings_window import SettingsWindow
+from src.util.Logger import get_logger
+from src.util.Struction import Level
+from src.util.paths import app_dir
 
 logger = get_logger("主窗口")
 
+
 class MainWindow(QMainWindow):
     """主窗口"""
-    def __init__(self, settings_manager: SettingsManager):
+    def __init__(self, settings_manager: SettingsManager | None = None):
         super().__init__()
-        self.settings_manager = settings_manager
+        self.settings_manager = settings_manager or get_settings_manager()
+        # 由 update_level_table 填充，供排序/歌单导出复用
+        self._levels_data: dict[str, tuple[Level, str]] = {}
+        self._unknown_levels_data: list[tuple[Level, str]] = []
+        self._parent_dirs: list[str] = []
         self.setWindowTitle("关卡管理器")
         self.setMinimumSize(1000, 600)
         self.init_ui()
@@ -201,7 +219,7 @@ class MainWindow(QMainWindow):
         if song_names is None:
             return
 
-        file_path = os.path.join(os.getcwd(), "歌单.txt")
+        file_path = str(app_dir() / "歌单.txt")
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write("\n".join(song_names))
@@ -247,7 +265,7 @@ class MainWindow(QMainWindow):
                 draw.text((margin, y), name, fill=(255, 255, 255, 255), font=font)
                 y += line_spacing
 
-            file_path = os.path.join(os.getcwd(), "歌单.png")
+            file_path = str(app_dir() / "歌单.png")
             img.save(file_path, "PNG")
             logger.info(f"歌单图片已生成: {file_path} (共 {len(song_names)} 首)")
         except Exception as e:

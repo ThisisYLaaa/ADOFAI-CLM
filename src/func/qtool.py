@@ -1,16 +1,18 @@
-# quick tool
+"""关卡目录的批量解析：多进程读取 .adofai 并汇总成表格数据。"""
+from __future__ import annotations
+
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+from src.func.file import tool_file
+from src.func.fma import tool_fma
+from src.UI.settings_manager import get_settings_manager
 from src.util.Logger import get_logger
-logger = get_logger("快速工具")
-from src.func import tool_file
-from src.func import tool_fma
-from src.UI.settings_manager import SettingsManager
-from src.util import Level
-from src.util import get_level_json
+from src.util.Parser import get_level_json
+from src.util.Struction import Level
 
-settings_manager = SettingsManager()
+logger = get_logger("快速工具")
+
 
 class tool_quick:
     @staticmethod
@@ -40,10 +42,11 @@ class tool_quick:
         adofai_filepaths: list[str] = []
         for level_dir in level_dirs:
             adofai_filepaths.append(tool_file.get_adofai_filepath_from_leveldir_auto(level_dir))
-        
+
         result: dict[str, tuple[Level, str]] = {}
         unknown_result: list[tuple[Level, str]] = []
-        with ProcessPoolExecutor(max_workers=settings_manager.settings.max_parse_level_threading) as executor:
+        max_workers = get_settings_manager().settings.max_parse_level_threading
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
             future_to_path = {executor.submit(tool_quick._parse_level, path, False): path for path in adofai_filepaths}
             for future in as_completed(future_to_path):
                 path = future_to_path[future]
@@ -57,6 +60,6 @@ class tool_quick:
                     if console_log: logger.info(f"发现关卡: {tool_fma.remove_unity_rich_text(song_name)}")
                 except Exception as e:
                     logger.error(f"解析关卡失败: {path}, 错误: {e}")
-        
+
         if console_log: logger.info(f"加载完成! 发现{len(result)}个关卡, {len(unknown_result)}个未知关卡")
         return result, unknown_result
